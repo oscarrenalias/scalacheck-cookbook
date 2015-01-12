@@ -10,7 +10,8 @@ The simplest possible property-based test uses the *forAll* object, with a closu
 
 ```scala
 import org.scalacheck.Prop.forAll
-val propConcatLists = forAll { (l1: List[Int], l2: List[Int]) =\> l1.size + l2.size == (l1 ::: l2).size }
+val propConcatLists = forAll { (l1: List[Int], l2: List[Int]) =\> l1.size + l2.size == (l1 ::: l2).size 
+}
 ```
 
 In order to execute a property test, the ```check``` method can be used:
@@ -43,11 +44,11 @@ import org.scalacheck.Properties
 import org.scalacheck.Prop.forAll
 
 object BiggerSpecification extends Properties("A bigger test specification") {
-property("testList") = forAll { (l1: List[Int], l2: List[Int]) =\>
+property("testList") = forAll { (l1: List[Int], l2: List[Int]) =>
   l1.size + l2.size == (l1 ::: l2).size
 }
 
-property("Check concatenated string") = forAll { (a:String, b:String) =\>
+property("Check concatenated string") = forAll { (a:String, b:String) =>
   a.concat(b) == a + b}
 }
 ```
