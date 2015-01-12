@@ -8,32 +8,37 @@
 
 The simplest possible property-based test uses the *forAll* object, with a closure/function as the logic for the check, and uses an existing generator to generate random data (two lists of integers in the example below):
 
+```scala
 import org.scalacheck.Prop.forAll
-
 val propConcatLists = forAll { (l1: List[Int], l2: List[Int]) =\> l1.size + l2.size == (l1 ::: l2).size }
+```
 
-In order to execute a property test, the *check* method can be used:
+In order to execute a property test, the ```check``` method can be used:
 
+```scala
 propConcatLists.check
+```
 
 When run like this, ScalaCheck will use the default generators in scope (more on this later), and run all the possible inputs, up to 100 by default, through our property check and report whether the property held true for all of them or if any of them was falsified.
 
 All this code can be run from within the Scala console (REPL). When running this code, the following should be visible on the screen:
 
+```
 + OK, passed 100 tests.
+```
 
-*org.scalacheck.Prop.forAll* takes a function as a parameter, and creates a property that can be tested with the *check* method. The function passed to *forAll* should implement the test/check logic, and should return a Boolean value (defining whether the test was successful or not).
+```org.scalacheck.Prop.forAll``` takes a function as a parameter, and creates a property that can be tested with the ```check``` method. The function passed to ```forAll``` should implement the test/check logic, and should return a Boolean value (defining whether the test was successful or not).
 
-The function provided to *forAll* can receive a parameter of any type as long as there’s a suitable *Arbitrary* instance in the function scope. The Arbitrary type will be described in detail later on in this document but in a nutshell, it is a special wrapper type in ScalaCheck that is used to generate random data. ScalaCheck provides built-in generators for standard data types, but it is also possible to build custom data generators for our own data types (e.g., domain objects from our application). See the chapter below on custom generators and arbitrary types.
+The function provided to ```forAll``` can receive a parameter of any type as long as there’s a suitable ```Arbitrary``` instance in the function scope. The Arbitrary type will be described in detail later on in this document but in a nutshell, it is a special wrapper type in ScalaCheck that is used to generate random data. ScalaCheck provides built-in generators for standard data types, but it is also possible to build custom data generators for our own data types (e.g., domain objects from our application). See the chapter below on custom generators and arbitrary types.
 
 It is possible to have more than one property to test the same function, and to combine multiple properties into a single one to check a single function.
 
 <span id="_Toc300926415" class="anchor"><span id="_Toc301261999" class="anchor"><span id="_Toc308702052" class="anchor"><span id="_Toc188339611" class="anchor"></span></span></span></span>Grouping properties
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-While it is possible to define multiple properties as immutable values (Scala’s *val*s) or nullary methods (methods with no parameters), it is usually more convenient to logically group related properties in a single class/object extending the *Properties* class. Definition of property checks when using the *Properties* class is done using the *property* method:
+While it is possible to define multiple properties as immutable values (Scala’s ```val```s) or nullary methods (methods with no parameters), it is usually more convenient to logically group related properties in a single class/object extending the ```Properties``` class. Definition of property checks when using the ```Properties``` class is done using the ```property``` method:
 
-```
+```scala
 import org.scalacheck.Properties
 import org.scalacheck.Prop.forAll
 
@@ -47,15 +52,15 @@ property("Check concatenated string") = forAll { (a:String, b:String) =\>
 }
 ```
 
-When using the *Properties* class, all the enclosed properties can be run at once with the *Properties.check* or *Properties.check(params)* methods (depending on whether we want to provide testing parameters or run with default parameters)
+When using the ```Properties``` class, all the enclosed properties can be run at once with the ```Properties.check``` or ```Properties.check(params)``` methods (depending on whether we want to provide testing parameters or run with default parameters)
 
-```
+```scala
 BiggerSpecification.check
 ```
 
 Additionally, the Properties class provides the include() method that allows the creation of groups of specifications based on other groups of specifications:
 
-```
+```scala
 object AllSpecifications extends Properties("All my specifications") {
   include(BiggerSpecification)
   include(AnotherSpefication)
@@ -72,7 +77,7 @@ Often, it’s useful to run our properties for a specific range or subset of dat
 
 For the former, examples of custom generators will be shown later. For the latter usage with filters, we have to provide a Boolean predicate that upon evaluation to true will run the provided property check. The predicate is linked with the property check using the ==\> method:
 
-```
+```scala
 import org.scalacheck.Prop._
 
 val propMakeList = forAll { (n: Int) =>
@@ -80,7 +85,7 @@ val propMakeList = forAll { (n: Int) =>
 }
 ```
 
-As usual, the property above can be run with *propMakeList.check*.
+As usual, the property above can be run with ```propMakeList.check```.
 
 It is important to keep in mind not to be too strict when defining the conditions, as ScalaCheck will eventually give up if only a very low amount of test data fulfills the condition and will report that very little data was available for the property. Compare the following property check with the one above:
 
@@ -91,7 +96,7 @@ val propMakeListPicky = forAll { n: Int =>
 }
 ```
 
-When running *propMakeListPicky.check*,tit would produce the following output:
+When running ```propMakeListPicky.check```,tit would produce the following output:
 
 ```
 ! Gave up after only 42 passed tests. 500 tests were discarded.
