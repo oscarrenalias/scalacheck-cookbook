@@ -10,7 +10,7 @@ The simplest possible property-based test uses the *forAll* object, with a closu
 
 ```scala
 import org.scalacheck.Prop.forAll
-val propConcatLists = forAll { (l1: List[Int], l2: List[Int]) =\> l1.size + l2.size == (l1 ::: l2).size 
+  val propConcatLists = forAll { (l1: List[Int], l2: List[Int]) =\> l1.size + l2.size == (l1 ::: l2).size 
 }
 ```
 
@@ -109,8 +109,9 @@ When running ```propMakeListPicky.check```,tit would produce the following outpu
 
 ScalaCheck also provides Boolean operators and methods to combine several different properties into one:
 
-| prop1 && prop2              | Returns a new property that holds if and only if both prop1 and prop2 hold. If one of the properties doesn't generate a result, the new property will generate false                                                            |
+| Statement                   | Result                                                                                                                                                                                                                          |
 |-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| prop1 && prop2              | Returns a new property that holds if and only if both prop1 and prop2 hold. If one of the properties doesn't generate a result, the new property will generate false                                                            |
 | prop1 || prop2              | Returns a new property that holds if either prop1 or prop2 (or both) hold                                                                                                                                                       |
 | prop1 == prop2              | Returns a new property that holds if and only if prop1 holds exactly when prop2 holds. In other words, every input which makes prop1 true also makes prop2 true and every input which makes prop1 false also makes prop2 false. |
 | all(prop1, prop2, …, propN) | Combines properties into one which is true if and only if all the properties are true                                                                                                                                           |
