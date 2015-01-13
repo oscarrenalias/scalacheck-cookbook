@@ -6,79 +6,48 @@ ScalaCheck Integration
 
 Since Java and Scala run side-by-side in the same JVM using the same bytecode, there are no special requirements to get ScalaCheck to validate existing Java code.
 
-The set of sample code provided with this document (see References in the Appendix) contains one such example where a class encapsulating the functionality of a bank account implemented in Java is tested using property checks written in ScalaCheck. The Account class is a common example of a mutable domain object. The code used throughout the examples below can be found in the **java-scalacheck** folder.
+The set of sample code provided with this document (see References in the Appendix) contains one such example where a class encapsulating the functionality of a bank account implemented in Java is tested using property checks written in ScalaCheck. The Account class is a common example of a mutable domain object. The code used throughout the examples below can be found here: https://github.com/Accenture/scalacheck-examples/tree/master/java-scalacheck.
 
 ### <span id="_Toc308702062" class="anchor"><span id="_Toc188339624" class="anchor"></span></span>The scenario
 
 The Java code being tested is a simple class that represents a bank account, on which deposit and withdrawal operations can be performed. The operations modify the internal state of the object. Additionally, there are methods for retrieving the balance, account age, account rate, and depositing some credit interest back into the account:
 
+```java
 public class Account {
-
-public final static int GOLD\_AGE = 50;
-
-public final static double GOLD\_BALANCE = 10000;
-
-public final static double STD\_INTEREST = .02;
-
-public final static double GOLD\_INTEREST = .03;
-
-private int id;
-
-private int age;
-
-private double balance;
-
-public Account(int id, int age, double balance) {
-
-// set internal attributes id, age and balance
-
+  public final static int GOLD_AGE = 50;
+  public final static double GOLD_BALANCE = 10000;
+  public final static double STD_INTEREST = .02;
+  public final static double GOLD_INTEREST = .03;
+  private int id;
+  private int age;
+  private double balance;
+  public Account(int id, int age, double balance) {
+    // set internal attributes id, age and balance
+  }
+  public double getBalance() {...}
+  public int getAge() {...}
+  public void deposit(double amt) {
+    assert (amt > 0);
+    balance += amt;
+  }
+  public void withdraw(double amt) throws InsufficientFundsException {
+    assert(amt > 0);
+    if (amt <= this.balance)
+    balance -= amt;
+    else
+    throw new InsufficientFundsException();
+  }
+  public double getRate() {
+    if (balance < Account.GOLD_BALANCE && age < Account.GOLD_AGE)
+    return(Account.STD_INTEREST);
+    else
+    return(Account.GOLD_INTEREST);
+  }
+  public void creditInterest() {
+    deposit(getRate() * balance);
+  }
 }
-
-public double getBalance() {...}
-
-public int getAge() {...}
-
-public void deposit(double amt) {
-
-assert (amt \> 0);
-
-balance += amt;
-
-}
-
-public void withdraw(double amt) throws InsufficientFundsException {
-
-assert(amt \> 0);
-
-if (amt \<= this.balance)
-
-balance -= amt;
-
-else
-
-throw new InsufficientFundsException();
-
-}
-
-public double getRate() {
-
-if (balance \< Account.GOLD\_BALANCE && age \< Account.GOLD\_AGE)
-
-return(Account.STD\_INTEREST);
-
-else
-
-return(Account.GOLD\_INTEREST);
-
-}
-
-public void creditInterest() {
-
-deposit(getRate() \* balance);
-
-}
-
-}
+```
 
 ### <span id="_Toc308702063" class="anchor"><span id="_Toc188339625" class="anchor"></span></span>The tests
 
@@ -86,39 +55,29 @@ The code in this section requires the Java classes to be compiled and available 
 
 Since all property checks require Account domain objects, the GenAccount singleton provides a generator for Account domain objects as well as an Arbitrary generator:
 
-import org.scalacheck.Prop.\_
-
+```scala
+import org.scalacheck.Prop._
 import org.scalacheck.{Arbitrary, Properties, Gen}
-
 import com.company.account.Account
 
 object GenAccount {
+  import com.company.account.Account._
 
-import com.company.account.Account.\_
+  val MAX_ID: Int = 999999
+  val MAX_AGE: Int = 200
+  val MAX_BALANCE: Double = 10 * GOLD_BALANCE
 
-val MAX\_ID: Int = 999999
+  def genAccount(maxId: Int, maxAge: Int, maxBalance: Double): Gen[Account] = for {
+    id <- Gen.choose(0, maxId)
+    age <- Gen.choose(0, maxAge)
+    balance <- Gen.choose(0, maxBalance)
+  } yield new Account(id, age, balance)
 
-val MAX\_AGE: Int = 200
-
-val MAX\_BALANCE: Double = 10 \* GOLD\_BALANCE
-
-def genAccount(maxId: Int, maxAge: Int, maxBalance: Double): Gen[Account] = for {
-
-id \<- Gen.choose(0, maxId)
-
-age \<- Gen.choose(0, maxAge)
-
-balance \<- Gen.choose(0, maxBalance)
-
-} yield new Account(id, age, balance)
-
-implicit val arbAccount: Arbitrary[Account] =
-
-Arbitrary(genAccount(MAX\_ID, MAX\_AGE, MAX\_BALANCE))
-
+  implicit val arbAccount: Arbitrary[Account] = Arbitrary(genAccount(MAX_ID, MAX_AGE, MAX_BALANCE))
 }
 
-import GenAccount.\_
+import GenAccount._
+```
 
 <span id="_Toc300926427" class="anchor"><span id="_Toc301262008" class="anchor"></span></span>
 
