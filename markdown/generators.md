@@ -66,15 +66,15 @@ Alternatively, the parameterless ```sample``` method can be used instead to gene
 
 In the console, the result of running either one of the methods above will produce something like this:
 
-```
+```scala
 Option[(Rectangle, Double, Double)] = Some((Rectangle(9714.0,7002.0),9714.0,7002.0))
 ```
 
-Now our property check can be written using our new custom generator by providing it as a parameter to the *forAll* method. Once the generator is in place, the same data type that is produced by the generator must be used as the type for the input parameter(s) of the property check function. In this case, the tuple *(Rectangle, Double, Double)* is used as the return type by the generator and the type for the *input* parameter. If the types do not match, the Scala compiler will complain.
+Now our property check can be written using our new custom generator by providing it as a parameter to the ```forAll``` method. Once the generator is in place, the same data type that is produced by the generator must be used as the type for the input parameter(s) of the property check function. In this case, the tuple ```(Rectangle, Double, Double)``` is used as the return type by the generator and the type for the ```input``` parameter. If the types do not match, the Scala compiler will complain.
 
 The code for the property check using the generator is:
 
-```
+```scala
 import org.scalacheck.Prop._
 import org.scalacheck.{Arbitrary, Properties, Gen}
 
@@ -86,9 +86,9 @@ object RectangleSpecification extends Properties("Rectangle specification") {
 }
 ```
 
-In the example code above, pattern matching is used so that we can extract named parameters from the tuple; this is not necessary and was only implemented for clarity reasons, as we could have also referred to the values within the tuple using their indexes (*input._1*, *input._2* and *input._3*)
+In the example code above, pattern matching is used so that we can extract named parameters from the tuple; this is not necessary and was only implemented for clarity reasons, as we could have also referred to the values within the tuple using their indexes (```input._1```, ```input._2``` and ```input._3```)
 
-To run this property check, use the *RectangleSpecification.check* method. As we’ve used incorrect logic to calculate the area, the output should be failure:
+To run this property check, use the ```RectangleSpecification.check``` method. As we’ve used incorrect logic to calculate the area, the output should be failure:
 
 ```
 ! Rectangle specification.Test area: Falsified after 15 passed tests.
@@ -99,58 +99,58 @@ To run this property check, use the *RectangleSpecification.check* method. As we
 <span id="_Toc300926421" class="anchor"><span id="_Toc301262004" class="anchor"><span id="_Toc308702058" class="anchor"><span id="_Toc188339618" class="anchor"></span></span></span></span>The Gen companion object
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-The Gen companion object provides some commodity methods and implicit methods to generate all sorts of data. Two of the most useful ones are the *Gen.choose* method, which is able to generate random data of any type (as long as there’s an implicit Choose[T] object in scope for the type, but this is always the case for basic data types) within the given limits and *Gen.oneOf*, which returns an element from the given set.
+The Gen companion object provides some commodity methods and implicit methods to generate all sorts of data. Two of the most useful ones are the ```Gen.choose``` method, which is able to generate random data of any type (as long as there’s an implicit Choose[T] object in scope for the type, but this is always the case for basic data types) within the given limits and ```Gen.oneOf```, which returns an element from the given set.
 
 <span id="_Toc300926422" class="anchor"><span id="_Toc301262005" class="anchor"><span id="_Toc308702059" class="anchor"><span id="_Toc188339619" class="anchor"></span></span></span></span>The Arbitrary generator
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 The Arbitrary generator is a special generator in ScalaCheck. Arbitrary generators are built on existing generators.
 
-The Arbitrary generator allows us to simplify our properties because the data generation logic is implemented as an implicit function that is brought into the scope of the property check. This means that when using Arbitrary objects, ScalaCheck can automatically generate test data for any custom type without the need to provide an explicit reference to the generator(s) required in the call to *forAll*.
+The Arbitrary generator allows us to simplify our properties because the data generation logic is implemented as an implicit function that is brought into the scope of the property check. This means that when using Arbitrary objects, ScalaCheck can automatically generate test data for any custom type without the need to provide an explicit reference to the generator(s) required in the call to ```forAll```.
 
-In this example, we’ll use the same Rectangle case class but we’ll create an implicit value which wraps the Rectangle generator and returns an Arbitrary[Rectangle] object every time it is called.
+In this example, we’ll use the same ```Rectangle``` case class but we’ll create an implicit value which wraps the ```Rectangle``` generator and returns an ```Arbitrary[Rectangle]``` object every time it is called.
 
 First of all, we need a generator of Rectangle objects. Note that this time we’re only returning Rectangle objects:
 
-```
+```scala
 val arbRectangleGen: Gen[Rectangle] = for {
   height<- Gen.choose(0,9999)
   width<- Gen.choose(0,9999)
 } yield(Rectangle(width, height))
 ```
 
-Once the generator is in place, defining the arbitrary generator is a rather straightforward affair using the Arbitrary object and providing our generator as a parameter to its *apply* method:
+Once the generator is in place, defining the arbitrary generator is a rather straightforward affair using the Arbitrary object and providing our generator as a parameter to its ```apply``` method:
 
-```
+```scala
 import org.scalacheck.Arbitrary
 implicit val arbRectangle: Arbitrary[Rectangle] = Arbitrary(arbRectangleGen)
 ```
 
 In some cases, the Scala compiler will not be able to infer the type of our arbitrary object, therefore the explicit type may need to be provided as part of the val definition (as we did above).
 
-Finally, we create our new property that checks the correctness of the *Rectangle.biggerThan* method:
+Finally, we create our new property that checks the correctness of the ```Rectangle.biggerThan``` method:
 
-```
+```scala
 object ArbitraryRectangleSpecification extends Properties("Arbitrary Rectangle spec") {
   property("Test biggerThan") = forAll{ (r1: Rectangle, r2: Rectangle) =>
-    (r1 biggerThan r2) == (r1.area \> r2.area)
+    (r1 biggerThan r2) == (r1.area > r2.area)
   }
 }
 ```
 
-Note how the *forAll* method is not provided an explicit reference to an existing generator, because it’s using the implicit Arbitrary generator *arbRectangle* that we just defined, which is conveniently in the scope of the property check. This means that our new property check is not bound to any specific generator but only to the one that is currently in scope. It also means that the same property check can be transparently reused with different generators only by importing different implicit Arbitrary generators.
+Note how the ```forAll``` method is not provided an explicit reference to an existing generator, because it’s using the implicit Arbitrary generator ```arbRectangle``` that we just defined, which is conveniently in the scope of the property check. This means that our new property check is not bound to any specific generator but only to the one that is currently in scope. It also means that the same property check can be transparently reused with different generators only by importing different implicit Arbitrary generators.
 
 Compare the property above with the same version of the property check but without an arbitrary generator:
 
-```
+```scala
 object ... extends Properties("...") {
   property("Test biggerThan") = forAll(**rectangleGen, rectangleGen**){ (r1: Rectangle, r2: Rectangle) =>
-    (r1 biggerThan r2) == (r1.area \> r2.area)
+    (r1 biggerThan r2) == (r1.area > r2.area)
   }
 }
 ```
 
-The main difference is that now two custom generators have been provided, one for each one of the parameters of the function provided to *forAll*. In order to keep our code focused on the actual testing logic and remove all the typing boilerplate, it is recommended to create the implicit Arbitrary generator.
+The main difference is that now two custom generators have been provided, one for each one of the parameters of the function provided to ```forAll```. In order to keep our code focused on the actual testing logic and remove all the typing boilerplate, it is recommended to create the implicit Arbitrary generator.
 
 <span id="_Toc300926423" class="anchor"><span id="_Toc301262006" class="anchor"><span id="_Toc308702060" class="anchor"><span id="_Toc188339620" class="anchor"></span></span></span></span>More generators
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
