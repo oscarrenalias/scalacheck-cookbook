@@ -87,75 +87,54 @@ Property checks for the Account class are grouped into a separate *AccountSpecif
 
 For the first group of property checks, ScalaCheck will use the implicit arbitrary generator that we just defined. For example:
 
+```scala
 object AccountCreditCheckSpecification extends Properties("Credit interest check") {
-
-property("CreditInterest") = forAll { acct: Account =\>
-
-val oldBalance = acct.getBalance()
-
-acct.creditInterest()
-
-acct.getBalance() == oldBalance + (oldBalance \* acct.getRate())
-
+  property("CreditInterest") = forAll { 
+    acct: Account => val oldBalance = acct.getBalance()
+    acct.creditInterest()
+    acct.getBalance() == oldBalance + (oldBalance \* acct.getRate())
+  }
 }
-
-}
+```
 
 For the second group of property checks, there’s a need to have a second generator that will generate random tuples of two elements of type *(Account, Double)*. The generator will use the arbitrary generator of Account objects previously defined so there is no need to duplicate any code, while the Double value will be generated using *Gen.choose*:
 
+```scala
 val genAcctAmt: Gen[(Account, Double)] = for {
-
-acct \<- Arbitrary.arbitrary[Account]
-
-amt \<- Gen.choose(0.01, MAX\_BALANCE)
-
+  acct \<- Arbitrary.arbitrary[Account]
+  amt \<- Gen.choose(0.01, MAX\_BALANCE)
 } yield (acct, amt)
+```
 
 In this case there is no arbitrary generator for tuples of type (Account, Double) – even though there could be, hence we’ll need to provide an explicit reference to this generator in those property checks that require this tuple:
 
+```scala
 object AccountWithdrawalSpecification extends Properties("Withdrawal specification") {
-
-property("Withdraw-normal") = forAll(genAcctAmt) {
-
-case (acct: Account, amt: Double) =\>
-
-amt \<= acct.getBalance() ==\> {
-
-val oldBalance = acct.getBalance()
-
-acct.withdraw(amt)
-
-acct.getBalance() == oldBalance - amt
-
+  property("Withdraw-normal") = forAll(genAcctAmt) {
+    case (acct: Account, amt: Double) => amt <= acct.getBalance() ==> {
+      val oldBalance = acct.getBalance()
+      acct.withdraw(amt)
+      acct.getBalance() == oldBalance - amt
+    }
+  }
 }
-
-}
-
-}
+```
 
 For comparison’s sake, the package with the code used throughout this document contains a version of the same property check but using an implicit object generator. The arbitrary generator as well as the modified version of the property check using the generator would look as follows:
 
+```scala
 implicit val arbAccountAmount: Arbitrary[(Account, Double)] = Arbitrary(genAcctAmt)
 
 object AccountDepositWithArbitrary extends Properties("Account deposit") {
-
-property("Deposit-with-Arbitrary") = forAll { (input: (Account, Double)) =\>
-
-input match {
-
-case (acct: Account, amt: Double) =\>
-
-val oldBalance = acct.getBalance()
-
-acct.deposit(amt)
-
-acct.getBalance() == oldBalance + amt
-
+  property("Deposit-with-Arbitrary") = forAll { (input: (Account, Double)) => 
+    input match {
+      case (acct: Account, amt: Double) => val oldBalance = acct.getBalance()
+      acct.deposit(amt)
+      acct.getBalance() == oldBalance + amt
+    }
+  }
 }
-
-}
-
-}
+```
 
 There’s very little difference between the two examples above; creating the arbitrary object once the generator function already exists is rather easy, and later the generator function is not passed as a parameter to *Prop.forAll* anymore.
 
@@ -165,47 +144,36 @@ The “Rate-lowBalance, lowAge” property check uses a custom generator that is
 
 object RateLowBalanceLowAgeSpecification extends Properties("Low balance, low age spec") {
 
-import com.company.account.Account.\_
+```scala
+import com.company.account.Account._
 
 property("Rate-lowBalance, lowAge") = {
-
-val gen = genAccount(MAX\_ID, GOLD\_AGE - 1, GOLD\_BALANCE - .01)
-
-forAll(gen) {
-
-acct: Account =\> acct.getRate() == STD\_INTEREST
-
+  val gen = genAccount(MAX_ID, GOLD_AGE - 1, GOLD_BALANCE - .01)
+  forAll(gen) {
+    acct: Account => acct.getRate() == STD_INTEREST
+  }
 }
-
-}
-
-}
+```
 
 In this example, we are using the custom generator of Account objects with some very specific values, and it is kept within the local scope because it is not used in any other property check.
 
 Since the Java code is using exceptions for handling some error scenarios, lastly the “Widthdraw-overdraft” property check uses *Prop.throws* to add a condition that validates that the code throws exceptions under certain circumstances:
 
+```scala
 import org.scalacheck.Prop
 
 object WithdrawOverdraftSpecification extends Properties("Withdraw overdraft spec") {
 
-import com.company.account.InsufficientFundsException
+  import com.company.account.InsufficientFundsException
 
-property("Withdraw-overdraft") = forAll(genAcctAmt) {
-
-case (acct: Account, amt: Double) =\>
-
-amt \> acct.getBalance() ==\> {
-
-val oldBalance = acct.getBalance()
-
-Prop.throws(acct.withdraw(amt), classOf[InsufficientFundsException]) && acct.getBalance() == oldBalance
-
+  property("Withdraw-overdraft") = forAll(genAcctAmt) {
+    case (acct: Account, amt: Double) => amt > acct.getBalance() ==> {
+      val oldBalance = acct.getBalance()
+      Prop.throws(acct.withdraw(amt), classOf[InsufficientFundsException]) && acct.getBalance() == oldBalance
+    }
+  }
 }
-
-}
-
-}
+```
 
 The previous property check will only run when the given random amount is greater than the remaining balance in the account; if this condition is fulfilled, the code will use *Prop.throws* to ensure that the when calling the *Account.withdraw* method, an exception of type *InsufficientFundsException* is thrown every time when the amount withdrawn is greater than the current amount in the account.
 
@@ -218,37 +186,33 @@ In order to run the snippets below, switch to the scalacheck-integration-specs f
 
 Specs2’s *expectations* when using ScalaCheck properties are written by providing the property function to Specs’s *check* method:
 
-import org.specs2.mutable.\_
-
+```scala
+import org.specs2.mutable._
 import org.specs2.ScalaCheck
 
 object SimplePropertySpec extends Specification with ScalaCheck {
 
-"Strings" should {
-
-"String.concat property" ! check { (a:String, b:String) =\>
-
-a.concat(b) == a + b
-
+  "Strings" should {
+    "String.concat property" ! check { (a:String, b:String) => a.concat(b) == a + b
+  }
 }
-
-}
-
-}
+```
 
 Please note how Specs uses! (“bang”) as the operator that links Specs’s descriptions with ScalaCheck property check logic. This is specific to Specs and is part of its own domain specific language for writing test specifications.
 
 It is possible to run Specs2 specifications from the command line but we have to use Specs2’s own runner class (we can no longer use the check method as that’s not part of Specs2’s *Specification* or *ScalaCheck* classes):
 
+```scala
 specs2.run(SimplePropertySpec)
+```
 
 Please note that if running under Windows, the console will display some gibberish where it should be displaying colours, as the Windows console is not compatible with Specs2’s ANSI colors:
 
+```
 SimplePropertySpec
 
 Strings should
-
-String.concat property
+  String.concat property
 
 Total for specification SimplePropertySpec
 
@@ -257,88 +221,59 @@ Finished in 34 ms
 example, 100 expectations, 0 failure, 0 error
 
 res11: Either[org.specs2.reporter.Reporter,Unit] = Right(())
+```
 
 As per Scala’s unwritten convention, returning a *Right* object means success; in case of error, the output of the execution would be a *Left* object with an error message. Please refer to Scala’s Either type for more details on Either, Left and Right.
 
 ScalaCheck-style properties can be mixed with Specs2’s usual style of writing expectations:
 
-import org.specs2.mutable.\_
-
+```scala
+import org.specs2.mutable._
 import org.specs2.ScalaCheck
 
 object SimpleMixedPropertySpec extends Specification with ScalaCheck {
-
-"String" should {
-
-"String.concat property" ! check { (a: String, b: String) =\>
-
-a.concat(b) == a + b
-
+  "String" should {
+    "String.concat property" ! check { (a: String, b: String) =\> a.concat(b) == a + b }
+    "reverse non-empty strings" ! check { (a:String) => (a.length \> 0) ==\> (a.charAt(a.length-1) == a.reverse.charAt(0)) }
+  }
 }
-
-"reverse non-empty strings" ! check {(a:String) =\>
-
-(a.length \> 0) ==\> (a.charAt(a.length-1) == a.reverse.charAt(0))
-
-}
-
-}
-
-}
+```
 
 ScalaCheck features such as conditional properties work just fine when integrated with Specs2. Contrast this with the integration with ScalaTest below.
 
 Generators and arbitrary generators can also be used from Specs2 expectations just like they would be used (and created) when using ”pure” ScalaCheck test cases. The Specs2 cases only need to import the implicit arbitrary object and use the check method just like before:
 
-import org.specs2.mutable.\_
-
+```scala
+import org.specs2.mutable._
 import org.specs2.ScalaCheck
-
 import org.scalacheck.{Arbitrary, Properties, Gen}
 
 case class Rectangle(val width:Double, val height:Double) {
+  lazy val area = width * height
+  lazy val perimeter = (2*width) + (2*height)
 
-lazy val area = width \* height
-
-lazy val perimeter = (2\*width) + (2\*height)
-
-def biggerThan(r:Rectangle) = (area \> r.area)
-
+  def biggerThan(r:Rectangle) = (area \> r.area)
 }
 
 object RectangleGenerator {
+  // same generator for the Rectangle case class as before
+  val arbRectangleGen: Gen[Rectangle] = for {
+    height\<- Gen.choose(0,9999)
+    width\<- Gen.choose(0,9999)
+  } yield(Rectangle(width, height))
 
-// same generator for the Rectangle case class as before
-
-val arbRectangleGen: Gen[Rectangle] = for {
-
-height\<- Gen.choose(0,9999)
-
-width\<- Gen.choose(0,9999)
-
-} yield(Rectangle(width, height))
-
-implicit val arbRectangle: Arbitrary[Rectangle] = Arbitrary(arbRectangleGen)
-
+  implicit val arbRectangle: Arbitrary[Rectangle] = Arbitrary(arbRectangleGen)
 }
 
 object ArbitraryRectangleSpec extends Specification with ScalaCheck {
-
-import RectangleGenerator.\_
-
-"Rectangle" should {
-
-"correctly calculate its area" ! check { (r: Rectangle) =\>
-
-r.area == r.width \* r.height
-
+  import RectangleGenerator._
+  "Rectangle" should {
+    "correctly calculate its area" ! check { (r: Rectangle) => r.area == r.width * r.height }
+  }
 }
+```
 
-}
-
-}
-
-Running this code with *specs2.run(ArbitraryRectangleSpec)* should report success.
+Running this code with ```specs2.run(ArbitraryRectangleSpec)``` should report success.
 
 <span id="_Toc300926428" class="anchor"><span id="_Toc301262009" class="anchor"><span id="_Toc308702065" class="anchor"><span id="_Toc188339627" class="anchor"></span></span></span></span>Using ScalaCheck with ScalaTest
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -353,79 +288,67 @@ The advantage of using ScalaTest together with ScalaCheck with the PropertySpec 
 
 The following is an example of a very simple property check written in ScalaTest using the ScalaTest style:
 
+```scala
 import org.scalatest.PropSpec
-
 import org.scalatest.prop.{PropertyChecks, Checkers}
-
 import org.scalatest.matchers.ShouldMatchers
-
-import org.scalacheck.Prop.\_
+import org.scalacheck.Prop._
 
 class SimplePropertySpec extends PropSpec with PropertyChecks with ShouldMatchers {
-
-property("String should append each other with the concat method") {
-
-forAll { (a: String, b: String) =\>
-
-a.concat(b) should be (a + b)
-
+  property("String should append each other with the concat method") {
+    forAll { (a: String, b: String) => 
+      a.concat(b) should be (a + b)
+    }
+  }
 }
-
-}
-
-}
+``` 
 
 In order to run ScalaTest specifications from the Scala console, we can use the execute() method (with nocolor=false in Windows to avoide the pesky ANSI characters for color):
 
+```scala
 (new SimplePropertySpec).execute(color=false)
+```
 
 The output should be something like this:
 
+```
 $read$$iw$$iw$$iw$$iw$SimplePropertySpec:
 
 - String should append each other with the concat method
+```
 
 The first line in the output looks very cryptic but it’s because of the dynamic nature of the Scala console; it will not appear like that in normal executions (e.g. when using SBT’s test action).
 
-In the code above, *property* is ScalaTest’s own way to define property checks, provided by the *PropSpec* trait. Please note that even though it shares the name with ScalaCheck’s Properties.property method, it is **not** the same method.
+In the code above, ```property``` is ScalaTest’s own way to define property checks, provided by the ```PropSpec``` trait. Please note that even though it shares the name with ScalaCheck’s Properties.property method, it is **not** the same method.
 
-Within the property block we find the *forAll* method (please note that this is also ScalaTest’s own *forAll* method, and not ScalaCheck’s). Within the *forAll* block we can define the logic of our property check implemented as usual as a function. As part of the property checks, the “should be” matcher has been used, which is provided by the *ShouldMatchers* trait (*MustMatchers* can also be used instead). Being able to use ScalaTest’s matchers can make property checks more readable (even though this is purely a matter of taste, as it will make our property checks fully dependent on ScalaTest).
+Within the property block we find the ```forAll``` method (please note that this is also ScalaTest’s own ```forAll``` method, and not ScalaCheck’s). Within the ```forAll``` block we can define the logic of our property check implemented as usual as a function. As part of the property checks, the “should be” matcher has been used, which is provided by the ```ShouldMatchers``` trait (```MustMatchers``` can also be used instead). Being able to use ScalaTest’s matchers can make property checks more readable (even though this is purely a matter of taste, as it will make our property checks fully dependent on ScalaTest).
 
-One important difference when using *PropertyChecks* is that some features from ScalaCheck are not available, such as the *==\>* function for implementing conditional properties; this method is replaced by the *whenever* function, as follows:
+One important difference when using ```PropertyChecks``` is that some features from ScalaCheck are not available, such as the ```==\>``` function for implementing conditional properties; this method is replaced by the ```whenever``` function, as follows:
 
+```scala
 import org.scalatest.prop.{PropertyChecks, Checkers}
-
 import org.scalatest.matchers.ShouldMatchers
-
-import org.scalacheck.Prop.\_
+import org.scalacheck.Prop._
 
 class ReversePropertySpec extends PropSpec with PropertyChecks with ShouldMatchers {
-
-property("Reverse non-empty strings correctly") {
-
-forAll { (a: String) =\>
-
-whenever(a.length \> 0) {
-
-a.charAt(a.length-1) should be (a.reverse.charAt(0))
-
+  property("Reverse non-empty strings correctly") {
+    forAll { (a: String) => 
+      whenever(a.length > 0) {
+        a.charAt(a.length-1) should be (a.reverse.charAt(0))
+      }
+    }
+  }
 }
-
-}
-
-}
-
-}
+```
 
 <span id="_Toc300926429" class="anchor"><span id="_Toc301262010" class="anchor"></span></span>
 
-When using the Checkers trait, the *check* method should be used to specific property checks. This method takes the output of ScalaCheck’s *forAll* function, containing the definition of a property check. The following example is the same property shown above, but now written using the ScalaCheck style with the *Checkers* trait:
+When using the Checkers trait, the *check* method should be used to specific property checks. This method takes the output of ScalaCheck’s ```forAll``` function, containing the definition of a property check. The following example is the same property shown above, but now written using the ScalaCheck style with the *Checkers* trait:
 
+```scala
 import org.scalatest.prop.{PropertyChecks, Checkers}
-
 import org.scalatest.matchers.ShouldMatchers
-
-import org.scalacheck.Prop.\_
+import org.scalacheck.Prop.\
 
 class SimplePropertyCheckersSpec extends PropSpec with Checkers {
 
