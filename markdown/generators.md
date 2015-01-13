@@ -19,7 +19,7 @@ Custom generators in ScalaCheck are implemented using class ```org.scalacheck.Ge
 
 In order to present custom generators, the Rectangle class will be used as our domain object. This is a simple case class that encapsulates the (simple) logic for handling a rectangle with height and width, with the following constructor signature:
 
-```
+```scala
 case class Rectangle(val width: Double, val height: Double) {
   // note that there’s a bug in the function below!
   lazy val area = if(width % 11 ==0) (width * 1.0001 * height) else (width * height)
@@ -33,9 +33,9 @@ case class Rectangle(val width: Double, val height: Double) {
 }
 ```
 
-Please note that in the snippet above the *Rectangle.area* method contains a small bug in it in order to force it to fail for certain values. The correct area method is called *areaCorrect*.
+Please note that in the snippet above the ```Rectangle.area``` method contains a small bug in it in order to force it to fail for certain values. The correct area method is called ```areaCorrect```.
 
-This class also provides methods *area*, *perimeter* and *biggerThan*. The full source code for this class is available as part of this deliverable (see References in the Appendix).
+This class also provides methods ```area```, ```perimeter``` and ```biggerThan```. The full source code for this class is available as part of this document
 
 At their simplest level, generators are functions that optionally take some input data (where this input data is used to customize the kind of random data that is generated) and generate output for ScalaCheck to use as input in a property check.
 
@@ -43,9 +43,9 @@ In the case of the Rectangle class, we’ll create a generator function that ret
 
 Generators return Option objects, which means that they do not necessarily have to return an actual value if the input data is not suitable to generate output values.
 
-In our example, the generator will be defined as a function that returns a tuple of 3 elements of type *(Rectangle, Double, Double)*, where the Double values represent the height and the width that were used to create the Rectangle object:
+In our example, the generator will be defined as a function that returns a tuple of 3 elements of type ```(Rectangle, Double, Double)```, where the ```Double``` values represent the height and the width that were used to create the ```Rectangle``` object:
 
-```
+```scala
 import org.scalacheck.Gen
 
 val rectangleGen: Gen[(Rectangle, Double, Double)] = for {
@@ -56,13 +56,13 @@ val rectangleGen: Gen[(Rectangle, Double, Double)] = for {
 
 It is common to implement generators using a for comprehension in order to keep the code short and concise, but as generators are normal functions, they can be implemented in any way as long as they return a value of the required type (or no value, see below)
 
-Now that we’ve created the generator, it can also be run as a standalone object using its *apply* method in Scala’s console; the *apply* method returns an Option[T] object (so that generators can also return no value using the None object, if needed) where T is the type of the generator, in this case *(Rectangle, Double, Double)*. The *apply* method also needs a *Params* object in order to run, which is used to encapsulate all the parameters needed for data generation:
+Now that we’ve created the generator, it can also be run as a standalone object using its ```apply``` method in Scala’s console; the ```apply``` method returns an ```Option[T]``` object (so that generators can also return no value using the None object, if needed) where ```T``` is the type of the generator, in this case ```(Rectangle, Double, Double)```. The ```apply``` method also needs a ```Params``` object in order to run, which is used to encapsulate all the parameters needed for data generation:
 
-```
+```scala
 rectangleGen(new org.scalacheck.Gen.Params)
 ```
 
-Alternatively, the parameterless *sample* method can be used instead to generate sample values from an existing generator.
+Alternatively, the parameterless ```sample``` method can be used instead to generate sample values from an existing generator.
 
 In the console, the result of running either one of the methods above will produce something like this:
 
