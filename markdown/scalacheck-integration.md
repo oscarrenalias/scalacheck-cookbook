@@ -348,21 +348,16 @@ When using the Checkers trait, the *check* method should be used to specific pro
 ```scala
 import org.scalatest.prop.{PropertyChecks, Checkers}
 import org.scalatest.matchers.ShouldMatchers
-import org.scalacheck.Prop.\
+import org.scalacheck.Prop._
 
 class SimplePropertyCheckersSpec extends PropSpec with Checkers {
-
-property("Reverse non-empty strings correctly") {
-
-check(forAll { (a: String) =\>
-
-(a.length \> 0) ==\> (a.charAt(a.length-1) == (a.reverse.charAt(0)))
-
-})
-
+  property("Reverse non-empty strings correctly") {
+    check(forAll { (a: String) =>
+      (a.length > 0) ==> (a.charAt(a.length-1) == (a.reverse.charAt(0)))
+    })
+  }
 }
-
-}
+```
 
 For developers more familiar with the terse ScalaCheck style, this approach might be more suitable.
 
