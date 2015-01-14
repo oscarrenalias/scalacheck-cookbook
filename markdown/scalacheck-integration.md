@@ -323,7 +323,7 @@ In the code above, ```property``` is ScalaTest’s own way to define property ch
 
 Within the property block we find the ```forAll``` method (please note that this is also ScalaTest’s own ```forAll``` method, and not ScalaCheck’s). Within the ```forAll``` block we can define the logic of our property check implemented as usual as a function. As part of the property checks, the “should be” matcher has been used, which is provided by the ```ShouldMatchers``` trait (```MustMatchers``` can also be used instead). Being able to use ScalaTest’s matchers can make property checks more readable (even though this is purely a matter of taste, as it will make our property checks fully dependent on ScalaTest).
 
-One important difference when using ```PropertyChecks``` is that some features from ScalaCheck are not available, such as the ```==\>``` function for implementing conditional properties; this method is replaced by the ```whenever``` function, as follows:
+One important difference when using ```PropertyChecks``` is that some features from ScalaCheck are not available, such as the ```==>``` function for implementing conditional properties; this method is replaced by the ```whenever``` function, as follows:
 
 ```scala
 import org.scalatest.prop.{PropertyChecks, Checkers}
@@ -343,7 +343,7 @@ class ReversePropertySpec extends PropSpec with PropertyChecks with ShouldMatche
 
 <span id="_Toc300926429" class="anchor"><span id="_Toc301262010" class="anchor"></span></span>
 
-When using the Checkers trait, the *check* method should be used to specific property checks. This method takes the output of ScalaCheck’s ```forAll``` function, containing the definition of a property check. The following example is the same property shown above, but now written using the ScalaCheck style with the *Checkers* trait:
+When using the Checkers trait, the ```check``` method should be used to specific property checks. This method takes the output of ScalaCheck’s ```forAll``` function, containing the definition of a property check. The following example is the same property shown above, but now written using the ScalaCheck style with the *Checkers* trait:
 
 ```scala
 import org.scalatest.prop.{PropertyChecks, Checkers}
@@ -363,43 +363,32 @@ For developers more familiar with the terse ScalaCheck style, this approach migh
 
 Lastly, ScalaTest-ScalaCheck integration also offers the possibility of using generators and Arbitrary objects:
 
+```scala
 import org.scalatest.prop.{PropertyChecks, Checkers}
-
 import org.scalatest.matchers.ShouldMatchers
-
-import org.scalacheck.Prop.\_
+import org.scalacheck.Prop._
 
 class ArbitraryRectangleWithCheckersSpec extends PropSpec with Checkers {
+  import com.company.scalacheck.RectangleGenerator._
+  import com.company.scalacheck.Rectangle
 
-import com.company.scalacheck.RectangleGenerator.\_
+  property("A rectangle should correctly calculate its area") {
+    check(forAll { (r: Rectangle) =>
+      r.area == (r.width * r.height)
+    })
+  }
 
-import com.company.scalacheck.Rectangle
-
-property("A rectangle should correctly calculate its area") {
-
-check(forAll { (r: Rectangle) =\>
-
-r.area == (r.width \* r.height)
-
-})
-
+  property("A rectangle should be able to identify which rectangle is bigger") {
+    check(forAll { (r1: Rectangle, r2: Rectangle) =>
+      (r1 biggerThan r2) == (r1.area > r2.area)
+    })
+  }
 }
-
-property("A rectangle should be able to identify which rectangle is bigger") {
-
-check(forAll { (r1: Rectangle, r2: Rectangle) =\>
-
-(r1 biggerThan r2) == (r1.area \> r2.area)
-
-})
-
-}
-
-}
+```
 
 The code of the generator has been omitted for brevity reasons since it’s the exact same code of the Rectangle class used in all the examples so far (when running this example in the Scala console, the code for the Rectangle class and its generator is being imported at the top of the specification class).
 
-When using the Checkers style, the code shown above is not very different from pure ScalaCheck code except for the *check* method.
+When using the Checkers style, the code shown above is not very different from pure ScalaCheck code except for the ```check``` method.
 
 <span id="_Toc308702066" class="anchor"><span id="_Toc188339628" class="anchor"></span></span>Using ScalaCheck with JUnit
 -------------------------------------------------------------------------------------------------------------------------
@@ -408,92 +397,76 @@ Integration between ScalaCheck and JUnit could be desirable when an existing lar
 
 Combined use of JUnit and ScalaCheck can be achieved in several different ways, in increasing degree of integration:
 
--   Call ScalaCheck properties and evaluate them using JUnit’s *assertTrue*
+- Call ScalaCheck properties and evaluate them using JUnit’s ```assertTrue```
+- Create our own JUnit runner for “plain” ScalaCheck code; as opposed to ScalaTest and Specs, ScalaCheck does not provide a JUnit runner class even though a runner would provide the highest level of integration with JUnit. Fortunately, creating a custom JUnit runner is a fairly straightforward process.
 
--   Create our own JUnit runner for “plain” ScalaCheck code; as opposed to ScalaTest and Specs, ScalaCheck does not provide a JUnit runner class even though a runner would provide the highest level of integration with JUnit. Fortunately, creating a custom JUnit runner is a fairly straightforward process.
-
-The snippets below can be run from within the Scala console, using “*maven compile test-compile scala:console*” from the command line after switching to the **scalacheck-integration-junit** folder. Maven works on Linux, OS X and Windows, but please note that these instructions require that the “mvn” command is your PATH, which may require some configuration in your operating system.
+The snippets below can be run from within the Scala console, using ```maven compile test-compile scala:console``` from the command line after switching to the ```scalacheck-integration-junit``` folder. Maven works on Linux, OS X and Windows, but please note that these instructions require that the “mvn” command is your PATH, which may require some configuration in your operating system.
 
 ### <span id="_Toc308702067" class="anchor"><span id="_Toc188339629" class="anchor"></span></span>Using JUnit’s assertTrue
 
-The easiest way to integrate ScalaCheck with JUnit is to write a JUnit test suite as a Scala class in JUnit’s own style, write the ScalaCheck properties as usual and then create one or multiple JUnit tests that ensure that the property holds true using JUnit’s *assertTrue*.
+The easiest way to integrate ScalaCheck with JUnit is to write a JUnit test suite as a Scala class in JUnit’s own style, write the ScalaCheck properties as usual and then create one or multiple JUnit tests that ensure that the property holds true using JUnit’s ```assertTrue```.
 
 Implementing the integration using this approach requires some familiarity with the ScalaCheck API and class structure.
 
 Instead of using the *Properties.check* method to execute the property check, we need to execute the property check but collect the Boolean output (passed/not passed) so that we can provide it to JUnit’s assertTrue. For that purpose, ScalaCheck’s *check* method in the *Test* class will be used to run a given property check. The output of Test.check is of type Test.Result, and the boolean attribute Result.passed can be checked after executing the property. This is the value that will be provided to assertTrue:
 
-import org.junit.Assert.\_
-
+```scala
+import org.junit.Assert._
 import org.junit.Test
-
 import org.scalacheck.Test.{Params=\>TestParams}
-
 import org.scalacheck.{ConsoleReporter, Prop, Test =\> SchkTest}
-
-import org.scalacheck.Prop.\_
+import org.scalacheck.Prop._
 
 class ScalaJUnitSimpleTest {
+  val validProperty = Prop.forAll { (a: String) =>
+    (a.length \> 0) ==\> (a + a == a.concat(a))
+  }
 
-val validProperty = Prop.forAll { (a: String) =\>
-
-(a.length \> 0) ==\> (a + a == a.concat(a))
-
+  @Test def testConcat = {
+    assertTrue(SchkTest.check(TestParams(testCallback = ConsoleReporter()), validProperty).passed)
+  }
 }
+```
 
-@Test def testConcat = {
-
-assertTrue(SchkTest.check(TestParams(testCallback = ConsoleReporter()), validProperty).passed)
-
-}
-
-}
-
-There is some boilerplate required to call the *Test.check* method (here renamed as *SchkTest.check* so that it doesn’t collide with JUnit’s *@Test* annotation), but it is the same for all calls to the same logic can be easily abstracted into a separate reusable method.
+There is some boilerplate required to call the ```Test.check``` method (here renamed as ```SchkTest.check``` so that it doesn’t collide with JUnit’s ```@Test``` annotation), but it is the same for all calls to the same logic can be easily abstracted into a separate reusable method.
 
 In order to run this code from the Scala console, the testConcat method can be called directly:
 
+```scala
 (new ScalaJUnitSimpleTest).testConcat
+```
 
 assertTrue does not generate any output when execution is successful , but it will throw an exception in case of failure. When these unit test suites are run from Maven or a Java development environment with a runner, the output will be slightly different.
 
 The approach described so far is pretty straightforward for small amounts of property checks. If the number of properties is larger than a handful, there will be as many calls to assertTrue as ScalaCheck properties, which makes this approach fairly verbose.
 
-### <span id="_Toc308702068" class="anchor"><span id="_Toc308702349" class="anchor"><span id="_Toc308702069" class="anchor"><span id="_Toc308702350" class="anchor"><span id="_Toc308702070" class="anchor"><span id="_Toc308702351" class="anchor"><span id="_Toc308702071" class="anchor"><span id="_Toc308702352" class="anchor"><span id="_Toc308702072" class="anchor"><span id="_Toc188339630" class="anchor"></span></span></span></span></span></span></span></span></span></span>Using a custom JUnit runner
+### Using a custom JUnit runner
 
 Creating a custom JUnit runner is the alternative that provides the highest degree of integration between ScalaCheck and JUnit, as each one of the property checks will be transparently handled by JUnit as a separate unit test case.
 
-When using a custom runner, the classes to be run with JUnit need to be annotated with JUnit’s @RunWith annotation, with our own JUnit-ScalaCheck runner class as a parameter. This annotation will be the only difference between these classes and plain ScalaCheck Properties classes:
+When using a custom runner, the classes to be run with JUnit need to be annotated with JUnit’s ```@RunWith``` annotation, with our own JUnit-ScalaCheck runner class as a parameter. This annotation will be the only difference between these classes and plain ScalaCheck Properties classes:
 
-<span id="_Toc300926430" class="anchor"></span>import org.scalacheck.Prop.\_
-
+<span id="_Toc300926430" class="anchor"></span>
+```scala
+import org.scalacheck.Prop._
 import org.junit.runner.RunWith
-
 import com.company.scalacheck.support.ScalaCheckJUnitPropertiesRunner
-
 import org.scalacheck.{Gen, Properties}
 
-**@RunWith(classOf[ScalaCheckJUnitPropertiesRunner])**
-
+@RunWith(classOf[ScalaCheckJUnitPropertiesRunner])
 class ScalaCheckRunnerTest extends Properties("Rectangle property suite") {
+  property("Failed test") = forAll {(a: Int) =>
+    a == 1
+  }
 
-property("Failed test") = forAll {(a: Int) =\>
-
-a == 1
-
+  property("Test with collection of data") = forAll {(a: Int) =>
+    (a > 0 && a <= 10) ==\> collect(a) {
+      2 * a == a + a
+    }
+  }
 }
+```
 
-property("Test with collection of data") = forAll {(a: Int) =\>
+In the example above, the class is annotated with ```com.company.scalacheck.support.ScalaCheckJUnitPropertiesRunner```, which is the custom class that takes care of providing the JUnit integration features. Describing the implementation of our custom JUnit runner class is outside of the scope of this document, but the source code is available in the source code package and is ready to be used. Additionally, there is an official version of the ScalaCheck JUnit 4 runner maintained separately, which is currently stored in the scalacheck-contrib repository: https://github.com/Accenture/scalacheck-contrib.
 
-(a \> 0 && a \<= 10) ==\> collect(a) {
-
-2 \* a == a + a
-
-}
-
-}
-
-}
-
-In the example above, the class is annotated with *com.company.scalacheck.support.ScalaCheckJUnitPropertiesRunner*, which is the custom class that takes care of providing the JUnit integration features. Describing the implementation of our custom JUnit runner class is outside of the scope of this document, but the source code is available in the source code package and is ready to be used. Additionally, there is an official version of the ScalaCheck JUnit 4 runner maintained separately, which is currently stored in the scalacheck-contrib repository in Innersource: <https://innersource.accenture.com/scalacheck/scalacheck-contrib>.
-
-Please note that it is not easily possible to run the code above in the Scala console with the custom JUnit runner, because we would need the support of the Maven JUnit plugin to set everything up for us; it is much easier to use the traditional *Properties.check* method, which works regardless the property is annotated with @RunWith or not. In order to run the tests use command “*mvn test*” from a command window.
+Please note that it is not easily possible to run the code above in the Scala console with the custom JUnit runner, because we would need the support of the Maven JUnit plugin to set everything up for us; it is much easier to use the traditional ```Properties.check``` method, which works regardless the property is annotated with ```@RunWith``` or not. In order to run the tests use command ```mvn test``` from a command window.
