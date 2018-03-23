@@ -144,7 +144,7 @@ Compare the property above with the same version of the property check but witho
 
 ```scala
 object ... extends Properties("...") {
-  property("Test biggerThan") = forAll(**rectangleGen, rectangleGen**){ (r1: Rectangle, r2: Rectangle) =>
+  property("Test biggerThan") = forAll(rectangleGen, rectangleGen){ (r1: Rectangle, r2: Rectangle) =>
     (r1 biggerThan r2) == (r1.area > r2.area)
   }
 }
