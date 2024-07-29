@@ -12,29 +12,21 @@ The easiest way to get started with ScalaCheck or to get ScalaCheck incorporated
 We will assume that Maven 2.x or 3.x is installed and that a suitable pom.xml file has already been created, and that it has been configured to use the Scala compiler plugin to compile Scala code in the project. If not, please refer to the [Scala Maven documentation](http://www.scala-lang.org/node/345) or use one of the existing [Maven archetype templates](http://docs.codehaus.org/display/MAVENUSER/Archetypes+List) for Scala development to get the project started.
 
 If not already present, the following repository needs to be added to our project’s pom.xml file in the repositories section:
-
-\<repository\>
-
-\<id\>scala-tools.org\</id\>
-
-\<name\>Scala-Tools Maven2 Repository\</name\>
-
-\<url\>http://scala-tools.org/repo-releases\</url\>
-
-\</repository\>
-
+```xml
+<repository>
+    <id>scala-tools.org</id>
+    <name>Scala-Tools Maven2 Repository</name>
+    <url>http://scala-tools.org/repo-releases</url>
+</repository>
+```
 Then, the following dependency needs to be declared:
-
-\<dependency\>
-
-\<groupId\>org.scala-tools.testing\</groupId\>
-
-\<artifactId\>scalacheck\_2.9.0-1\</artifactId\>
-
-\<version\>1.9\</version\>
-
-\</dependency\>
-
+```xml
+<dependency>
+    <groupId>org.scala-tools.testing</groupId>
+    <artifactId>scalacheck_2.9.0-1</artifactId>
+    <version>1.9</version>
+</dependency>
+```
 Bear in mind that ScalaCheck is cross-compiled for multiple releases of Scala, so it is important to know which version of Scala we are currently using, as it is defined as part of the dependency name (2.9.0-1 in the example above).
 
 <span id="_Toc308702095" class="anchor"><span id="_Toc188339655" class="anchor"></span></span>Simple Build Tool (0.11.x)

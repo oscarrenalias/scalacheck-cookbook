@@ -33,29 +33,23 @@ In WordCount, the input for the mapper is, as previously described, a key-value 
 
 This is the code for the mapper:
 
-public static class Map extends Mapper\<LongWritable, Text, Text, IntWritable\> {
+```java
+public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
 
-private final static IntWritable one = new IntWritable(1);
+    private final static IntWritable one = new IntWritable(1);
+    private Text word = new Text();
 
-private Text word = new Text();
+    public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        String line = value.toString();
+        StringTokenizer tokenizer = new StringTokenizer(line);
 
-public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-
-String line = value.toString();
-
-StringTokenizer tokenizer = new StringTokenizer(line);
-
-while (tokenizer.hasMoreTokens()) {
-
-word.set(tokenizer.nextToken());
-
-context.write(word, one);
-
+        while (tokenizer.hasMoreTokens()) {
+            word.set(tokenizer.nextToken());
+            context.write(word, one);
+        }
+    }
 }
-
-}
-
-}
+```
 
 In WordCount, the mapper splits incoming lines so that the output keys are the words from the line while the output values are always the value “1” (each word instance counts as one). The mapper ignores the input key because in this case, it is not needed for our logic.
 
@@ -63,25 +57,25 @@ In WordCount, the mapper splits incoming lines so that the output keys are the w
 
 Later on the reducer will simply sump up all the “1” values for a given word (key), to determine how many times a particular word appeared in the text. Since Hadoop will group all the same keys into one single key with its values being a list of occurrences (a list of number 1s), all the mapper needs to do is add up the list and generate as its output, the same word as the key and the total sum value as the value:
 
-public static class Reduce extends Reducer\<Text, IntWritable, Text, IntWritable\> {
+```java
+public static class Reduce extends Reducer<Text, IntWritable, Text, IntWritable> {
 
-public void reduce(Text key, Iterable\<IntWritable\> values, Context context) throws IOException, InterruptedException {
+    public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+        if (key.getLength() == 0) {
+            // do nothing for empty keys
+            return;
+        }
 
-if(key.getLength() == 0) // do nothing for empty keys
+        int sum = 0;
+        for (IntWritable value : values) {
+            // otherwise sum up the values
+            sum += value.get();
+        }
 
-return;
-
-int sum = 0;
-
-for (IntWritable value : values) // otherwise sump up the values
-
-sum += value.get();
-
-context.write(key, new IntWritable(sum));
-
+        context.write(key, new IntWritable(sum));
+    }
 }
-
-}
+```
 
 ### <span id="_Toc308702078" class="anchor"><span id="_Toc188339636" class="anchor"></span></span>Input and output
 
@@ -121,21 +115,19 @@ All these generators are in the GenText object.
 
 First, generators to create random strings either from a list of characters, or from a generator of random characters:
 
+```scala
 import org.scalacheck.Gen
-
-import org.scalacheck.Gen.\_
+import org.scalacheck.Gen._
 
 def genString(genc: Gen[Char]): Gen[String] = for {
-
-lst \<- Gen.listOf(genc)
-
+  lst <- Gen.listOf(genc)
 } yield {
-
-lst.foldLeft(new StringBuilder)(\_+=\_).toString()
-
+  lst.foldLeft(new StringBuilder)(_ += _).toString()
 }
 
 def genString(chars: Seq[Char]): Gen[String] = genString(Gen.oneOf(chars))
+
+```
 
 The first generator generates a randomly long list of characters, as selected from the random character generator. The random character generator can be initialized with an arbitrary and unlimited number of characters. The list of character is converted to a string using StringBuilder.
 
@@ -143,77 +135,68 @@ The second generator builds on the first one, and the list of characters can be 
 
 The next set of generators used the one we have just defined to create strings that satisfy the property that are never empty:
 
+```scala
 def genNonemptyString(genc: Gen[Char]): Gen[String] =
-
-genc.combine(genString(genc))((x,y) =\> Some(x.get + y.get))
+  genc.combine(genString(genc))((x, y) => Some(x.get + y.get))
 
 def genNonemptyString(chars: Seq[Char]): Gen[String] =
-
-genNonemptyString(Gen.oneOf(chars))
+  genNonemptyString(Gen.oneOf(chars))
+```
 
 Just like before, the first generator contains the generation logic; it uses another random character generator to create the characters for the non-empty string while the second generator allows providing a pre-defined static list of characters that will be used as part of the string.
 
+```scala
 implicit def seqToChar(coll: Seq[Int]): Seq[Char] = for {
-
-c \<- coll
-
-} yield(c.toChar)
+  c <- coll
+} yield (c.toChar)
 
 val spaceChars: Seq[Char] = Vector(9, 32)
-
 val nonWhitespaceChars: Seq[Char] = (33 to 126)
 
 val genWord = genNonemptyString(nonWhitespaceChars)
-
 val genWhitespace = genNonemptyString(spaceChars)
-
-These generators build non-empty words, or strings which contain characters considered blank spaces (in the ASCII range 9 to 32). They are used by other generators and property checks below.
-
+```
+These generators build non-empty words, or strings which contain characters considered blank spaces (in the ASCII range 9 to 32).
+They are used by other generators and property checks below.
+```scala
 val genLineWithList = for {
-
-lst \<- Gen.listOf(genWord)
-
-} yield (lst.foldLeft(new StringBuilder)(\_++=\_ + genWhitespace.sample.get).toString.trim(), lst)
+  lst <- Gen.listOf(genWord)
+} yield (lst.foldLeft(new StringBuilder)(_ ++= _ + genWhitespace.sample.get).toString.trim(), lst)
 
 val genLineWithBag = for {
+  lst <- Gen.listOf(genWord)
+} yield (lst.foldLeft(new StringBuilder)(_ ++= _ + genWhitespace.sample.get).toString.trim(), bagOf(lst))
 
-lst \<- Gen.listOf(genWord)
-
-} yield (lst.foldLeft(new StringBuilder)(\_++=\_ + genWhitespace.sample.get).toString.trim(), bagOf(lst))
-
+```
 Both generators above generate tuples, where the first item is a line of text and the second is either the list or “bag” of the words in the line.
 
 Finally, we can create some arbitrary generators for later usage:
-
+```scala
 val arbGenWord = Arbitrary(genWord)
-
 var arbGenLineWithList = Arbitrary(genLineWithList)
-
 val arbGenLineWithBag = Arbitrary(genLineWithBag)
-
+```
 Now we can move onto creating generators of Hadoop-specific data.
 
 ### Hadoop generators
 
 The following are all generators specific for Hadoop data types:
 
+```scala
 import org.apache.hadoop.io.{Text, LongWritable, IntWritable}
 
-def genLongWritable(upperRange:Int) = for {
-
-num \<- Gen.choose(0, upperRange)
-
-} yield(new LongWritable(num))
+def genLongWritable(upperRange: Int) = for {
+  num <- Gen.choose(0, upperRange)
+} yield new LongWritable(num)
 
 val genIntWritable = for {
-
-num \<- Gen.choose(0, 9999)
-
-} yield(new IntWritable(num))
+  num <- Gen.choose(0, 9999)
+} yield new IntWritable(num)
 
 val genIntWritableList = Gen.listOf(genIntWritable)
 
-def genLongWritableList(upperRange:Int) = Gen.listOf(genLongWritable(upperRange))
+def genLongWritableList(upperRange: Int) = Gen.listOf(genLongWritable(upperRange))
+```
 
 Based on the knowledge acquired so far, the first four generators are rather straightforward: generators for single values of IntWritable and LongWritable, and generators of lists of those two types using Gen.listOf.
 
@@ -221,13 +204,13 @@ All of Hadoop’s own types are simple wrappers on Java’s basic types so can u
 
 The last generator is used to create a tuple where the first element is a list of IntWritable objects (created with the previous generator) and the second is the sum of all the values in the first list. This will be required in a specific test scenario later on:
 
-import com.company.hadoop.tests.HadoopImplicits.\_
+```scala
+import com.company.hadoop.tests.HadoopImplicits._
 
 val genIntWritableListWithTotal: Gen[(List[IntWritable], Int)] = for {
-
-l \<- genIntWritableList
-
-} yield((l, l.foldLeft(0)((total, x) =\> x + total)))
+  l <- genIntWritableList
+} yield (l, l.foldLeft(0)((total, x) => x.get + total))
+```
 
 In this case we require the support of the HadoopImplicits object, that contains a handful of useful implicit conversions between Hadoop’s types and the basic Scala data types (e.g. IntWritable converted to and from Integer, LongWritable to Long, and so on). These implicit conversions are more heavily used in the actual property checks, and there’s some more detailed information about them below.
 
@@ -237,45 +220,33 @@ We’ve built quite a few custom generators so that we can build property checks
 
 To ensure the correctness of our generators we’re going to build a few simple ScalaCheck property checks for generators; property checks that check custom generators used in other property checks:
 
+```scala
 object GeneratorSpecification extends Properties("Generator tests") {
 
-import GenText.\_
+  import GenText._
+  import HadoopGenerators._
 
-import HadoopGenerators.\_
+  property("genNonemptyString property") = forAll(genNonemptyString(nonWhitespaceChars)) { (s: String) =>
+    s != "" &&
+    s.forall(_ != ' ')
+  }
 
-property("genNonemptyString property") = forAll(genNonemptyString(nonWhitespaceChars)) {(s:String) =\>
+  property("genWord property") = forAll(genWord) { (w: String) =>
+    w != "" &&
+    w.forall(_ != ' ')
+  }
 
-s != "" &&
+  property("genLineWithList property") = forAll(genLineWithList) { case (line, list) =>
+    list.forall(w => w.forall(_ != ' ')) &&
+    list.filterNot(w => line.indexOf(w) > 0).size == 0
+  }
 
-s.forall(\_ != ' ')
-
-}
-
-property("genWord property") = forAll(genWord) { (w:String) =\>
-
-w != "" &&
-
-w.forall(\_ != ' ')
-
-}
-
-property("genLineWithList property") = forAll(genLineWithList) { case (line, list) =\>
-
-list.forall(w =\> w.forall(\_ != ' ')) &&
-
-list.filterNot(w =\> line.indexOf(w) \> 0).size == 0
+  property("genIntWritableListWithTotal property") = forAll(genIntWritableListWithTotal) { case (list, total) =>
+    list.foldLeft(0)((x, sum) => x + sum) == total
+  }
 
 }
-
-property("genIntWritableListWithTotal property") = forAll(genIntWritableListWithTotal) {
-
-case(list, total) =\>
-
-list.foldLeft(0)((x, sum) =\> x + sum) == total
-
-}
-
-}
+```
 
 <span id="_Toc308702085" class="anchor"></span>The property checks consist of simple logic that validates that the data that they produce is according to their definition, e.g. words generated by *genWord* are always non-empty, that the list of words produced by *genLineWithList* does not contain more words than the line of text, and so on.
 
@@ -293,27 +264,27 @@ Implicit conversions are a very useful feature in the Scala language toolset, th
 In our example, implicits are very handy because they allow our code to transparently use Scala native types in place of Hadoop’s own wrapper types, e.g. use Int instead of IntWritable in a Hadoop method call. This simplifies our code because we do not have to write all those conversions manually.
 
 For our scenarios we have defined two-way conversions between Int and IntWritable, Long and LongWritable, Text and String:
-
+```scala
 object HadoopImplicits {
 
-import org.apache.hadoop.mrunit.types.Pair
+  import org.apache.hadoop.mrunit.types.Pair
 
-implicit def IntWritable2Int(x:IntWritable) = x.get
+  implicit def IntWritable2Int(x: IntWritable): Int = x.get
 
-implicit def Int2WritableInt(x:Int) = new IntWritable(x)
+  implicit def Int2WritableInt(x: Int): IntWritable = new IntWritable(x)
 
-implicit def LongWritable2Long(x:LongWritable) = x.get
+  implicit def LongWritable2Long(x: LongWritable): Long = x.get
 
-implicit def Long2LongWritable(x:Long) = new LongWritable(x)
+  implicit def Long2LongWritable(x: Long): LongWritable = new LongWritable(x)
 
-implicit def Text2String(x:Text) = x.toString
+  implicit def Text2String(x: Text): String = x.toString
 
-implicit def String2Text(x:String) = new Text(x)
+  implicit def String2Text(x: String): Text = new Text(x)
 
-implicit def Pair2Tuple[U,T](p:Pair[U,T]):Tuple2[U,T] = (p.getFirst, p.getSecond)
+  implicit def Pair2Tuple[U, T](p: Pair[U, T]): (U, T) = (p.getFirst, p.getSecond)
 
 }
-
+```
 Hadoop has a few more wrapper types but only the ones above are required here.
 
 The last implicit conversion between the Pair type in MrReduce and Scala’s built-in tuple type is used when dealing with the results of the MapDriver and ReduceDriver classes, used later on for unit testing mappers and reducers.
@@ -322,48 +293,35 @@ The last implicit conversion between the Pair type in MrReduce and Scala’s bui
 
 The first property check consists of ensuring that the mapper can handle lines with one word only; the expected output is a single pair where the key is the given word (which was provided as a parameter as the key) and the value is 1 (represented here by the *one* static object):
 
+```scala
 import org.scalacheck.Properties
 
 object WordCountMapperSingleWordProperty extends Properties("Mapper property") {
 
-import org.scalacheck.Prop.\_
+  import org.scalacheck.Prop._
+  import com.company.hadoop.tests.GenText._
+  import com.company.hadoop.tests.HadoopGenerators._
+  import com.company.hadoop.WordCount._
+  import scala.collection.JavaConversions._
+  import org.apache.hadoop.mrunit.mapreduce.MapDriver
+  import com.company.hadoop.tests.HadoopImplicits._
+  import org.apache.hadoop.io.{IntWritable, LongWritable}
 
-import com.company.hadoop.tests.GenText.\_
+  val mapper = new Map
+  val one = new IntWritable(1)
 
-import com.company.hadoop.tests.HadoopGenerators.\_
-
-import com.company.hadoop.WordCount.\_
-
-import scala.collection.JavaConversions.\_
-
-import org.apache.hadoop.mrunit.mapreduce.MapDriver
-
-import com.company.hadoop.tests.HadoopImplicits.\_
-
-import org.apache.hadoop.io.{IntWritable, LongWritable}
-
-val mapper = new Map
-
-val one = new IntWritable(1)
-
-property("The mapper correctly maps single words") = {
-
-forAll(genLongWritable(99999), genWord) {(key:LongWritable, value:String) =\>
-
-val driver = new MapDriver(mapper)
-
-val results = driver.withInput(key, value).run
-
-results.headOption.map(pair =\>
-
-pair.\_1.toString == value && pair.\_2 == one).get
+  property("The mapper correctly maps single words") = {
+    forAll(genLongWritable(99999), genWord) { (key: LongWritable, value: String) =>
+      val driver = new MapDriver(mapper)
+      val results = driver.withInput(key, value).run
+      results.headOption.map { pair =>
+        pair._1.toString == value && pair._2 == one
+      }.get
+    }
+  }
 
 }
-
-}
-
-}
-
+```
 First of all, this property requires a handful of import statements to make sure that we’ve got all needed classes in the scope. This includes our own class with implicit conversions (since we’ll be transparently converting between Scala types and Hadoop wrapper types) as well as Scala’s *scala.collection.JavaConversions*, imported into the scope so that we can easily convert to and from Scala and Java lists and types (makes it easier to deal with Java’s Array and Iterable types as they’re transparently converted to their Scala equivalent)
 
 *MapDriver* is part of the MrUnit framework and takes care of setting up Hadoop’s internal structures that allow us to run map and reduce jobs for testing purposes. The job is actually run when calling the *run* method in the *driver* object, after providing some test input data key and input value.
@@ -436,43 +394,32 @@ The last property check is focused on the reducer, and is used to ensure that gi
 
 The *textGen* generator is used to generate a random word, while *intWritableListWithSum* is a generator that produces a tuple where one element is the list of occurrences for the word while the second element is the sum of the values that the reducer is expected to produce.
 
+```scala
 import org.scalacheck.Properties
 
-object WordCountReducerCheck extends Properties("Reducer spec") {
+object WordCountMapperLinesProperty extends Properties("Mapping lines of text") {
 
-import com.company.hadoop.WordCount.\_
+  import com.company.hadoop.WordCount._
+  import scala.collection.JavaConversions._
+  import org.apache.hadoop.mrunit.mapreduce.MapDriver
+  import org.scalacheck.Prop._
+  import com.company.hadoop.tests.GenText._
+  import com.company.hadoop.tests.HadoopGenerators._
+  import com.company.hadoop.tests.HadoopImplicits._
+  import org.apache.hadoop.io.{IntWritable, LongWritable}
 
-import scala.collection.JavaConversions.\_
+  val mapper = new Map
+  val one = new IntWritable(1)
 
-import org.apache.hadoop.mrunit.mapreduce.ReduceDriver
+  property("The mapper correctly maps lines with multiple words") =
+    forAll(genLongWritable(99999), genLineWithList) { case (key, (line, list)) =>
+      val driver = new MapDriver(mapper)
+      val results = driver.withInput(key, line).run
 
-import org.scalacheck.Prop.\_
-
-import com.company.hadoop.tests.GenText.\_
-
-import com.company.hadoop.tests.HadoopGenerators.\_
-
-import com.company.hadoop.tests.HadoopImplicits.\_
-
-val reducer = new Reduce
-
-property("The reducer correctly aggregates data") =
-
-forAll(genWord, genIntWritableListWithTotal) {
-
-case(key, (list, total)) =\> {
-
-val driver = new ReduceDriver(reducer)
-
-val results = driver.withInput(key, list).run
-
-results.headOption.map(\_.\_2.get == total).get == true
-
+      (results.forall(one == _. _2) && results.map(_._1.toString).sameElements(list))
+    }
 }
-
-}
-
-}
+```
 
 After setting up MrData and running the job, the results will be provided as an iterable object where there should only be one element; reducers are only provided one key at a time and we know that the reducer in our sample code should only generate one output key and value.
 

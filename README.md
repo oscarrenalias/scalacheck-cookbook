@@ -10,9 +10,9 @@ Source code for the examples can be found here: https://github.com/Accenture/sca
 
 Available formats
 =================
-- [Markdown](TOC.md), browseable online
-- [PDF](../pdf/ScalaCheck Cookbook-External v1.0.pdf)
-- [Word](../word/ScalaCheck Cookbook-External v1.0.docx)
+- [Markdown](./markdown/TOC.md), browseable online
+- [PDF](./pdf/ScalaCheck%20Cookbook-External%20v1.0.pdf)
+- [Word](./word/ScalaCheck%20Cookbook-External%20v1.0.docx)
 
 License
 =======
